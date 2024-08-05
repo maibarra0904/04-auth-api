@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 import User from "../models/auth.schema";
 
 import * as bcrypt from 'bcrypt';
+import jwt from "jsonwebtoken";
 
 export const register = async (req: Request, res: Response) => {
 
@@ -20,14 +21,43 @@ export const register = async (req: Request, res: Response) => {
         let user = await User.findOne({email})
 
         if (user) {
-            return res.status(400).json({error: "El email ya está registrado"})
+            return res.status(400).json({
+                success: false,
+                error: "El email ya está registrado",
+            })
         }
 
 
         newUser.save();    
-        return res.status(200).json(newUser);
+
+        jwt.sign(
+            {id: newUser._id}, 
+            process.env.JWT_SECRET, 
+            { expiresIn: '1h' },
+            (err, token) => {
+                if (err) return res.status(400).json({
+                    success: false,
+                    errors: {
+                        msg: ["Hubo un error al crear el token"]
+                    },
+                    token: null
+                });
+                return res.status(200).json({
+                    success: true,
+                    errors: null,
+                    token
+                });
+            }
+        );
+        
     } catch (error) {
-        throw new Error("Hubo un error al guardar el punto")
+        return res.status(500).json({
+            success: false,
+            errors: {
+                msg: ["Error en el servidor", error]
+            },
+            token: null
+        });
     }
 }
 
@@ -39,16 +69,43 @@ export const login = async (req: Request, res: Response) => {
 
         let user = await User.findOne({email})
 
-        if (!user) {
-            return res.status(400).json({error: "No existe usuario con ese email"})
+        if (!user || !bcrypt.compareSync( password, user.password)) {
+            return res.status(400).json({
+                success: false,
+                errors: {
+                    msg: ["Email o password incorrecto"]
+                },
+                token: null
+            })
         }
 
-        if(!bcrypt.compareSync( password, user.password)) {
-            return res.status(400).json({error: "Contraseña incorrecta"})
-        }
 
-        return res.status(200).json({msg: "Usuario Loggeado correctamente"});
+        jwt.sign(
+            {id: user._id}, 
+            process.env.JWT_SECRET, 
+            { expiresIn: '1h' },
+            (err, token) => {
+                if (err) res.status(400).json({
+                    success: false,
+                    errors: {
+                        msg: ["Hubo un error al crear el token"]
+                    },
+                    token: null
+                });
+                res.status(200).json({
+                    success: true,
+                    errors: null,
+                    token
+                });
+            }
+        );
     } catch (error) {
-        throw new Error("Hubo un error al iniciar sesión")
+        return res.status(500).json({
+            success: false,
+            errors: {
+                msg: ["Error en el servidor", error]
+            },
+            token: null
+        });
     }
 }
