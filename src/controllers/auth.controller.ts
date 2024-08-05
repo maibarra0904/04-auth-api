@@ -109,3 +109,12 @@ export const login = async (req: Request, res: Response) => {
         });
     }
 }
+
+export const changePassword = async (req: Request, res: Response ) => {
+    res.status(200).json({
+        success: true,
+        errors: null,
+    });
+}
+
+export const changeUsername = async (req: Request, res: Response ) => {}
