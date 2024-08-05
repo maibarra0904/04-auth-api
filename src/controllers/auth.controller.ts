@@ -1,22 +1,31 @@
 import { Request, Response } from "express"
-import authSchema from "../models/auth.schema";
+import User from "../models/auth.schema";
+
+import * as bcrypt from 'bcrypt';
 
 export const register = async (req: Request, res: Response) => {
 
-    let params = req.body;
+    let {name, email, password} = req.body;
 
-    const punto = new authSchema(params)
+    const dataUser = {
+        name,
+        email,
+        password: await bcrypt.hash(password, 10)
+    }
+
+    const newUser = new User(dataUser)
     
     try {
 
-        let user = await authSchema.findOne({email: params.email})
+        let user = await User.findOne({email})
 
         if (user) {
             return res.status(400).json({error: "El email ya está registrado"})
         }
 
-        punto.save();    
-        return res.status(200).json(punto);
+
+        newUser.save();    
+        return res.status(200).json(newUser);
     } catch (error) {
         throw new Error("Hubo un error al guardar el punto")
     }
