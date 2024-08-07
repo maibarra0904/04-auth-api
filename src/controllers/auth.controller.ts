@@ -85,17 +85,21 @@ export const login = async (req: Request, res: Response) => {
             process.env.JWT_SECRET, 
             { expiresIn: '1h' },
             (err, token) => {
-                if (err) res.status(400).json({
+                if (err) return res.status(400).json({
                     success: false,
                     errors: {
                         msg: ["Hubo un error al crear el token"]
                     },
                     token: null
                 });
-                res.status(200).json({
+                return res.status(200).json({
                     success: true,
                     errors: null,
-                    token
+                    token,
+                    user: {
+                        name: user.name,
+                        email: user.email
+                    }
                 });
             }
         );
@@ -110,11 +114,71 @@ export const login = async (req: Request, res: Response) => {
     }
 }
 
-export const changePassword = async (req: Request, res: Response ) => {
-    res.status(200).json({
-        success: true,
-        errors: null,
-    });
+export const changePassword = async (req: Request | any, res: Response ) => {
+
+    const id = req.id
+
+    const { oldPassword, newPassword } = req.body;
+
+    try {
+        
+        let user = await User.findById(id);
+
+        if (!bcrypt.compareSync(oldPassword, user.password)) {
+            return res.status(400).json({
+                success: false,
+                errors: {
+                    msg: ["Contraseña incorrecta"]
+                },
+                token: null
+            })
+        }
+
+        const passwordUpdated = await bcrypt.hash(newPassword, 10);
+
+        await User.findByIdAndUpdate(id, {password: passwordUpdated});
+
+        return res.status(200).json({
+            success: true,
+            errors: null,
+            token: null
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            errors: {
+                msg: ["Error en el servidor", error]
+            },
+            token: null
+        });
+    }
 }
 
-export const changeUsername = async (req: Request, res: Response ) => {}
+export const changeUsername = async (req: Request | any, res: Response ) => {
+    const id = req.id
+
+    const { newName } = req.body;
+
+    try {
+        
+        let user = await User.findById(id);
+
+        await User.findByIdAndUpdate(id, {name: newName});
+
+        return res.status(200).json({
+            success: true,
+            errors: null,
+            token: null
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            errors: {
+                msg: ["Error en el servidor", error]
+            },
+            token: null
+        });
+    }
+}
